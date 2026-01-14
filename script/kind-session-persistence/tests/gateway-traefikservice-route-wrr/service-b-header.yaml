@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami-tsr-wrr-b-header
+  namespace: default
+spec:
+  selector:
+    app: whoami-tsr-wrr-b
+  ports:
+    - name: web
+      port: 80
+      targetPort: 80

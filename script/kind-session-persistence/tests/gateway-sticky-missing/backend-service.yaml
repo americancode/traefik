@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami-missing
+  namespace: default
+spec:
+  selector:
+    app: whoami-missing
+  ports:
+    - name: web
+      port: 80
+      targetPort: 80

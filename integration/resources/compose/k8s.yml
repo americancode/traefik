@@ -23,6 +23,7 @@ services:
     volumes:
       - ./fixtures/k8s/config.skip:/output
       - ./fixtures/k8s:/var/lib/rancher/k3s/server/manifests
+      - ./fixtures/k8s-session-persistence:/fixtures/k8s-session-persistence
 
   node:
     image: rancher/k3s:v1.34.2-k3s1

@@ -1,0 +1,20 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ir-sticky-cookie
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`whoami-ir-cookie.localhost`)
+      kind: Rule
+      services:
+        - name: whoami-ir-cookie
+          port: 80
+          sticky:
+            cookie:
+              name: ir-cookie

@@ -1,0 +1,41 @@
+image:
+  registry: localhost
+  repository: traefik
+  tag: dev
+  pullPolicy: IfNotPresent
+
+versionOverride: v3.6.6
+
+service:
+  type: ClusterIP
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+providers:
+  kubernetesIngress:
+    enabled: false
+  kubernetesCRD:
+    enabled: true
+    ingressClass: traefik
+    namespaces:
+      - default
+  kubernetesGateway:
+    enabled: true
+    experimentalChannel: false
+    namespaces:
+      - default
+      - traefik
+    statusAddress:
+      service:
+        enabled: true
+        name: traefik
+        namespace: traefik
+
+gateway:
+  namespace: default
+
+additionalArguments:
+  - "--log.level=DEBUG"

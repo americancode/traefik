@@ -1,0 +1,14 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: TraefikService
+metadata:
+  name: whoami-xbtp-ts
+  namespace: default
+spec:
+  weighted:
+    sticky:
+      header:
+        name: X-TS-Sticky
+    services:
+      - name: whoami-xbtp-ts
+        port: 80

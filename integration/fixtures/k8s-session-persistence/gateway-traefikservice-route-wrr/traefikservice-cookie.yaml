@@ -1,0 +1,16 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: TraefikService
+metadata:
+  name: tsr-wrr-cookie
+  namespace: default
+spec:
+  weighted:
+    sticky:
+      cookie:
+        name: tsr-wrr-only
+    services:
+      - name: whoami-tsr-wrr-a-cookie
+        port: 80
+      - name: whoami-tsr-wrr-b-cookie
+        port: 80

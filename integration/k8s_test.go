@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -27,13 +28,22 @@ import (
 var updateExpected = flag.Bool("update_expected", false, "Update expected files in testdata")
 
 // K8sSuite tests suite.
-type K8sSuite struct{ BaseSuite }
+type K8sSuite struct {
+	BaseSuite
+	kindPortForwardCmd    *exec.Cmd
+	kindTraefikValuesPath string
+}
 
 func TestK8sSuite(t *testing.T) {
 	suite.Run(t, new(K8sSuite))
 }
 
 func (s *K8sSuite) SetupSuite() {
+	if s.useKindMode() {
+		s.setupKindSuite()
+		return
+	}
+
 	s.BaseSuite.SetupSuite()
 
 	s.createComposeProject("k8s")
@@ -61,6 +71,10 @@ func (s *K8sSuite) SetupSuite() {
 }
 
 func (s *K8sSuite) TearDownSuite() {
+	if s.useKindMode() {
+		s.cleanupKindSuite()
+	}
+
 	s.BaseSuite.TearDownSuite()
 
 	generatedFiles := []string{
@@ -75,6 +89,112 @@ func (s *K8sSuite) TearDownSuite() {
 	for _, filename := range generatedFiles {
 		if err := os.Remove(filename); err != nil {
 			log.Warn().Err(err).Send()
+		}
+	}
+}
+
+func (s *K8sSuite) useKindMode() bool {
+	value := strings.ToLower(strings.TrimSpace(os.Getenv("K8S_USE_KIND")))
+	return value == "1" || value == "true" || value == "yes"
+}
+
+func (s *K8sSuite) setupKindSuite() {
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if kubeconfig == "" {
+		home, err := os.UserHomeDir()
+		require.NoError(s.T(), err)
+		defaultConfig := filepath.Join(home, ".kube", "config")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			err = os.Setenv("KUBECONFIG", defaultConfig)
+			require.NoError(s.T(), err)
+		} else {
+			require.NoErrorf(s.T(), err, "KUBECONFIG must be set or %s must exist", defaultConfig)
+		}
+	}
+
+	for _, fixture := range k8sBaseFixturePaths() {
+		s.applyKindFixture(fixture)
+	}
+
+	s.ensureKindTraefikValues(sessionKindTraefikValuesDefaultFile)
+}
+
+func (s *K8sSuite) cleanupKindSuite() {
+	s.cleanupKindSessionFixtures()
+	if s.kindPortForwardCmd != nil {
+		s.stopKindPortForward(s.kindPortForwardCmd)
+		s.kindPortForwardCmd = nil
+	}
+	if s.kindTraefikValuesPath != "" {
+		s.helm("uninstall", "traefik", "-n", "traefik")
+		s.kindTraefikValuesPath = ""
+	}
+	for _, fixture := range k8sBaseFixturePathsReverse() {
+		s.kubectl("delete", "--ignore-not-found", "-f", fixture)
+	}
+}
+
+func (s *K8sSuite) applyKindFixture(fixture string) {
+	if strings.HasSuffix(fixture, "00-experimental-v1.4.0.yml") || strings.HasSuffix(fixture, "01-traefik-crd.yml") {
+		s.kubectl("apply", "--server-side", "--force-conflicts", "--validate=false", "-f", fixture)
+		return
+	}
+	s.kubectl("apply", "-f", fixture)
+}
+
+func k8sBaseFixturePaths() []string {
+	return k8sFixturePaths(kindFixtureMode())
+}
+
+func k8sBaseFixturePathsReverse() []string {
+	paths := k8sBaseFixturePaths()
+	for i, j := 0, len(paths)-1; i < j; i, j = i+1, j-1 {
+		paths[i], paths[j] = paths[j], paths[i]
+	}
+	return paths
+}
+
+type fixtureMode int
+
+const (
+	fixturesFull fixtureMode = iota
+	fixturesSessionOnly
+)
+
+func kindFixtureMode() fixtureMode {
+	flagValue := flag.Lookup("testify.m")
+	if flagValue != nil && strings.Contains(flagValue.Value.String(), "SessionPersistence") {
+		return fixturesSessionOnly
+	}
+	return fixturesFull
+}
+
+func k8sFixturePaths(mode fixtureMode) []string {
+	switch mode {
+	case fixturesSessionOnly:
+		return []string{
+			filepath.Join("fixtures", "k8s", "00-experimental-v1.4.0.yml"),
+			filepath.Join("fixtures", "k8s", "01-traefik-crd.yml"),
+		}
+	default:
+		return []string{
+			filepath.Join("fixtures", "k8s", "00-experimental-v1.4.0.yml"),
+			filepath.Join("fixtures", "k8s", "01-traefik-crd.yml"),
+			filepath.Join("fixtures", "k8s", "02-secrets.yml"),
+			filepath.Join("fixtures", "k8s", "02-services.yml"),
+			filepath.Join("fixtures", "k8s", "03-gateway.yml"),
+			filepath.Join("fixtures", "k8s", "03-ingress-https.yml"),
+			filepath.Join("fixtures", "k8s", "03-ingress.yml"),
+			filepath.Join("fixtures", "k8s", "03-ingressroute.yml"),
+			filepath.Join("fixtures", "k8s", "03-tlsoption.yml"),
+			filepath.Join("fixtures", "k8s", "03-tlsstore.yml"),
+			filepath.Join("fixtures", "k8s", "04-ingressroute.yml"),
+			filepath.Join("fixtures", "k8s", "05-ingressroutetcp.yml"),
+			filepath.Join("fixtures", "k8s", "05-ingressrouteudp.yml"),
+			filepath.Join("fixtures", "k8s", "06-ingressroute-traefikservices.yml"),
+			filepath.Join("fixtures", "k8s", "07-ingressroute-cross-namespace.yml"),
+			filepath.Join("fixtures", "k8s", "07-ingressroute-serverstransport.yml"),
+			filepath.Join("fixtures", "k8s", "08-ingressclass.yml"),
 		}
 	}
 }

@@ -1,0 +1,21 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gw-ts-multi-header
+  namespace: default
+spec:
+  parentRefs:
+    - name: traefik-gateway
+  hostnames:
+    - whoami-ts-header.localhost
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: ts-multi-header
+          kind: TraefikService
+          group: traefik.io
+          port: 80

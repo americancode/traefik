@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami-failover
+  namespace: default
+spec:
+  selector:
+    app: whoami-failover
+  ports:
+    - name: web
+      port: 80
+      targetPort: 80
