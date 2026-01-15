@@ -240,6 +240,14 @@ spec:
     traefik.ingress.kubernetes.io/service.sticky.cookie.samesite: "none"
     ```
 
+??? info "`traefik.ingress.kubernetes.io/service.sticky.cookie.domain`"
+
+    See [sticky sessions](../kubernetes/crd/http/traefikservice.md#stickiness-on-multiple-levels) for more information.
+
+    ```yaml
+    traefik.ingress.kubernetes.io/service.sticky.cookie.domain: "foo.com"
+    ```
+
 ??? info "`traefik.ingress.kubernetes.io/service.sticky.cookie.httponly`"
 
     See [sticky sessions](../kubernetes/crd/http/traefikservice.md#stickiness-on-multiple-levels) for more information.
@@ -254,6 +262,30 @@ spec:
 
     ```yaml
     traefik.ingress.kubernetes.io/service.sticky.cookie.maxage: 42
+    ```
+
+??? info "`traefik.ingress.kubernetes.io/service.sticky.cookie.path`"
+
+    See [sticky sessions](../kubernetes/crd/http/traefikservice.md#stickiness-on-multiple-levels) for more information.
+
+    ```yaml
+    traefik.ingress.kubernetes.io/service.sticky.cookie.path: /foobar
+    ```
+
+??? info "`traefik.ingress.kubernetes.io/service.sticky.header`"
+
+    See [sticky sessions](../kubernetes/crd/http/traefikservice.md#stickiness-on-multiple-levels) for more information.
+
+    ```yaml
+    traefik.ingress.kubernetes.io/service.sticky.header: "true"
+    ```
+
+??? info "`traefik.ingress.kubernetes.io/service.sticky.header.name`"
+
+    See [sticky sessions](../kubernetes/crd/http/traefikservice.md#stickiness-on-multiple-levels) for more information.
+
+    ```yaml
+    traefik.ingress.kubernetes.io/service.sticky.header.name: X-Sticky-Session
     ```
 
 ## TLS

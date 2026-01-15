@@ -35,6 +35,8 @@ Test coverage & results (KIND):
 - `gateway-sticky-multiclient`: Cookie sticky -> Service; two clients stick to different pods. Result: each client keeps hitting its own pod.
 - `gateway-sticky-missing`: No cookie -> Service; simulates requests after the sticky pod/cookie are deleted to ensure traffic spreads across pods. Result: the requests now hit multiple hostnames.
 - `ingressroute-sticky`: IngressRoute sticky cookie/header -> Service (pod-level sticky). Result: cookie/header stick to a pod.
+- `ingress-header-sticky`: Ingress -> Service (header sticky via service annotations). Result: header stickiness keeps the same pod across 10 requests.
+- `ingress-cookie-sticky`: Ingress -> Service (cookie sticky via service annotations). Result: cookie stickiness keeps the same pod across 10 requests.
 - `gateway-traefikservice-multilevel`: HTTPRoute (no sessionPersistence) -> TraefikService (WRR + per-service sticky) -> Service. Result: TraefikService cookies/headers keep the pod fixed.
 - `gateway-traefikservice-route-sticky`: HTTPRoute sessionPersistence + TraefikService multi-level -> Service. Result: sessionPersistence stickiness and TraefikService sticky values align.
 - `gateway-traefikservice-route-wrr`: HTTPRoute sessionPersistence + TraefikService WRR-only -> Service. Result: WRR-only cookie keeps the pod consistent.
@@ -58,6 +60,8 @@ Cases validated locally:
 - HTTPRoute sessionPersistence -> Service with two clients.
 - HTTPRoute sessionPersistence -> Service with missing cookie.
 - IngressRoute sticky -> Service (cookie/header).
+- Ingress -> Service with header sticky (service annotations).
+- Ingress -> Service with cookie sticky (service annotations).
 - HTTPRoute -> TraefikService (WRR + per-service sticky) -> Service.
 - HTTPRoute sessionPersistence + TraefikService (WRR + per-service sticky) -> Service.
 - HTTPRoute sessionPersistence + TraefikService (WRR-only) -> Service.
@@ -299,6 +303,88 @@ for i in $(seq 1 20); do curl -s -H 'Host: whoami-ir-cookie.localhost' -H "Cooki
 RESP_HEADERS=$(curl -s -D - -H 'Host: whoami-ir-header.localhost' http://localhost:8000/ -o /dev/null)
 STICKY=$(printf '%s' "$RESP_HEADERS" | rg -i '^X-IR-Sticky:' | awk '{print $2}' | tr -d '\r')
 for i in $(seq 1 20); do curl -s -H 'Host: whoami-ir-header.localhost' -H "X-IR-Sticky: ${STICKY}" http://localhost:8000/ | rg -n '^Hostname:'; done
+```
+---
+
+ingress-header-sticky (Ingress sticky header via service annotations)
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami-ingress-sticky
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.header: "true"
+    traefik.ingress.kubernetes.io/service.sticky.header.name: X-Ingress-Sticky
+spec:
+  ports:
+    - name: http
+      port: 80
+  selector:
+    app: whoami-ingress-sticky
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-sticky-header
+spec:
+  rules:
+    - host: whoami-ingress-sticky.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: whoami-ingress-sticky
+                port:
+                  number: 80
+```
+```bash
+kubectl apply --validate=false -f <ingress-header-sticky-yamls>
+RESP_HEADERS=$(curl -s -D - -H 'Host: whoami-ingress-sticky.localhost' http://localhost:8000/ -o /dev/null)
+STICKY=$(printf '%s' "$RESP_HEADERS" | rg -i '^X-Ingress-Sticky:' | awk '{print $2}' | tr -d '\r')
+for i in $(seq 1 10); do curl -s -H 'Host: whoami-ingress-sticky.localhost' -H "X-Ingress-Sticky: ${STICKY}" http://localhost:8000/ | rg -n '^Hostname:'; done
+```
+---
+
+ingress-cookie-sticky (Ingress sticky cookie via service annotations)
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami-ingress-cookie-sticky
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.name: ingress-sticky
+spec:
+  ports:
+    - name: http
+      port: 80
+  selector:
+    app: whoami-ingress-cookie-sticky
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-cookie-sticky
+spec:
+  rules:
+    - host: whoami-ingress-cookie.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: whoami-ingress-cookie-sticky
+                port:
+                  number: 80
+```
+```bash
+kubectl apply --validate=false -f <ingress-cookie-sticky-yamls>
+RESP_HEADERS=$(curl -s -D - -H 'Host: whoami-ingress-cookie.localhost' http://localhost:8000/ -o /dev/null)
+COOKIE=$(printf '%s' "$RESP_HEADERS" | rg -i '^Set-Cookie:' | rg 'ingress-sticky' | head -n1 | sed 's/Set-Cookie: //I' | cut -d';' -f1)
+for i in $(seq 1 10); do curl -s -H 'Host: whoami-ingress-cookie.localhost' -H "Cookie: ${COOKIE}" http://localhost:8000/ | rg -n '^Hostname:'; done
 ```
 ---
 

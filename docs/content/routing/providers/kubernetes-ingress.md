@@ -428,6 +428,22 @@ which in turn will create the resulting routers, services, handlers, etc.
     traefik.ingress.kubernetes.io/service.sticky.cookie.path: /foobar
     ```
 
+??? info "`traefik.ingress.kubernetes.io/service.sticky.header`"
+
+    See [sticky sessions](../services/index.md#sticky-sessions) for more information.
+
+    ```yaml
+    traefik.ingress.kubernetes.io/service.sticky.header: "true"
+    ```
+
+??? info "`traefik.ingress.kubernetes.io/service.sticky.header.name`"
+
+    See [sticky sessions](../services/index.md#sticky-sessions) for more information.
+
+    ```yaml
+    traefik.ingress.kubernetes.io/service.sticky.header.name: X-Sticky-Session
+    ```
+
 ## Stickiness and load-balancing
 
 When stickiness is enabled, Traefik uses Kubernetes [serving](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/#serving) endpoints status to detect and mark servers as fenced.

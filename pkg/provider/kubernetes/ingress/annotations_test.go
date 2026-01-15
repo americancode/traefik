@@ -162,6 +162,23 @@ func Test_parseServiceConfig(t *testing.T) {
 			},
 		},
 		{
+			desc: "sticky header annotations",
+			annotations: map[string]string{
+				"traefik.ingress.kubernetes.io/service.sticky.header":      "true",
+				"traefik.ingress.kubernetes.io/service.sticky.header.name": "X-Sticky-Session",
+			},
+			expected: &ServiceConfig{
+				Service: &ServiceIng{
+					Sticky: &dynamic.Sticky{
+						Header: &dynamic.Header{
+							Name: "X-Sticky-Session",
+						},
+					},
+					PassHostHeader: pointer(true),
+				},
+			},
+		},
+		{
 			desc:        "empty map",
 			annotations: map[string]string{},
 			expected:    nil,

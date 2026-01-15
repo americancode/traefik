@@ -252,6 +252,16 @@ run_test() {
     basic-routing-ingress)
       retry_cmd 5 curl -s -H 'Host: whoami-ingress-basic.localhost' "http://localhost:${PORT}/" | rg -n '^Hostname:'
       ;;
+    ingress-header-sticky)
+      sticky=$(curl -s -D - -H 'Host: whoami-ingress-sticky.localhost' "http://localhost:${PORT}/" | rg -i '^X-Ingress-Sticky:' | awk '{print $2}' | tr -d '\r')
+      [ -n "$sticky" ]
+      curl -s -H 'Host: whoami-ingress-sticky.localhost' -H "X-Ingress-Sticky: ${sticky}" "http://localhost:${PORT}/" | rg -n '^Hostname:'
+      ;;
+    ingress-cookie-sticky)
+      cookie=$(curl -s -D - -H 'Host: whoami-ingress-cookie.localhost' "http://localhost:${PORT}/" | rg -i '^Set-Cookie:' | rg 'ingress-sticky' | head -n1 | sed 's/Set-Cookie: //I' | cut -d';' -f1)
+      [ -n "$cookie" ]
+      curl -s -H 'Host: whoami-ingress-cookie.localhost' -H "Cookie: ${cookie}" "http://localhost:${PORT}/" | rg -n '^Hostname:'
+      ;;
     basic-routing-ingressroute)
       retry_cmd 5 curl -s -H 'Host: whoami-ir-basic.localhost' "http://localhost:${PORT}/" | rg -n '^Hostname:'
       ;;
@@ -373,6 +383,28 @@ curl -H 'Host: whoami-gw-basic.localhost' http://localhost:8000/
 
 ```bash
 curl -H 'Host: whoami-ingress-basic.localhost' http://localhost:8000/
+```
+
+### ingress-header-sticky
+- Path: `script/kind-session-persistence/tests/ingress-header-sticky`
+- Service annotations enable header-based stickiness for an Ingress backend.
+- Host: `whoami-ingress-sticky.localhost`
+- This test requires `providers.kubernetesIngress.enabled: true` (already set in the test values file).
+
+```bash
+STICKY=$(curl -s -D - -H 'Host: whoami-ingress-sticky.localhost' http://localhost:8000/ | rg -i '^X-Ingress-Sticky:' | awk '{print $2}' | tr -d '\r')
+curl -H 'Host: whoami-ingress-sticky.localhost' -H "X-Ingress-Sticky: ${STICKY}" http://localhost:8000/ | rg -n '^Hostname:'
+```
+
+### ingress-cookie-sticky
+- Path: `script/kind-session-persistence/tests/ingress-cookie-sticky`
+- Service annotations enable cookie-based stickiness for an Ingress backend.
+- Host: `whoami-ingress-cookie.localhost`
+- This test requires `providers.kubernetesIngress.enabled: true` (already set in the test values file).
+
+```bash
+COOKIE=$(curl -s -D - -H 'Host: whoami-ingress-cookie.localhost' http://localhost:8000/ | rg -i '^Set-Cookie:' | rg 'ingress-sticky' | head -n1 | sed 's/Set-Cookie: //I' | cut -d';' -f1)
+curl -H 'Host: whoami-ingress-cookie.localhost' -H "Cookie: ${COOKIE}" http://localhost:8000/ | rg -n '^Hostname:'
 ```
 
 ### basic-routing-ingressroute
